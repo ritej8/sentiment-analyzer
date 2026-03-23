@@ -31,7 +31,7 @@ This project demonstrates a full **ML workflow**:
 - **Hidden layer:** 128 neurons with ReLU activation  
 - **Output:** 2 classes (Positive / Negative)  
 - **Training:** 5 epochs, cross-entropy loss  
-- **Performance:** ~99% train accuracy (for demonstration)
+- **Performance:**88% train accuracy 
 
 
 
