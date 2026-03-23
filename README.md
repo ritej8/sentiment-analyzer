@@ -31,7 +31,7 @@ This project demonstrates a full **ML workflow**:
 - **Hidden layer:** 128 neurons with ReLU activation  
 - **Output:** 2 classes (Positive / Negative)  
 - **Training:** 5 epochs, cross-entropy loss  
-- **Performance:**88% train accuracy 
+- **Performance:** 88% train accuracy 
 
 
 
@@ -41,12 +41,12 @@ This project demonstrates a full **ML workflow**:
 sentiment-analyzer/
 │
 ├── app.py            # Flask API
-├── train.py          # Train the model
 ├── predict.py        # Prediction helper
-├── requirements.txt  # Dependencies
-├── README.md         # This file
-└── .gitignore        # Ignored files (models, env)
-
+├── requirements.txt
+├── README.md
+├── .gitignore
+└── model/          # Contains train.py and model files
+└── data/           # contains dataset
 
 ##  How to run
 
