@@ -1,92 +1,235 @@
-# Sentiment Analyzer
+# Movie Review Sentiment Analysis
 
-**Sentiment analysis web application** using PyTorch and Flask API.  
-Predicts whether a given text expresses **positive or negative sentiment**.
-
-
+A binary sentiment classification project built with **PyTorch** and **Flask**. The model analyzes movie reviews and predicts whether their sentiment is positive or negative.
 
 ## Project Overview
 
-This project demonstrates a full **ML workflow**:
+This project implements a neural network-based sentiment classifier using a Bag-of-Words representation.
 
-1. Text preprocessing and vectorization  
-2. Training a neural network on labeled sentiment data  
-3. Building a Flask API for predictions  
-4. End-to-end reproducibility
+The pipeline includes:
+- Text preprocessing and cleaning
+- Feature extraction using `CountVectorizer`
+- Binary sentiment classification with PyTorch
+- Model evaluation using standard classification metrics
+- A Flask REST API for sentiment prediction
 
+## Technologies
 
+- Python
+- PyTorch
+- Scikit-learn
+- Pandas
+- Flask
+- Joblib
 
-##  Features
+## Dataset
 
-- Preprocessing and vectorization of text input  
-- Neural network classification (PyTorch)  
-- Flask REST API to predict sentiment from user input  
-- Clean, modular, and well-structured code  
+The project uses the IMDB Movie Reviews Dataset.
 
+- **Total reviews:** 50,000
+- **Positive reviews:** 25,000
+- **Negative reviews:** 25,000
+- **Training set:** 80% (40,000 reviews)
+- **Test set:** 20% (10,000 reviews)
 
+The dataset is split using `train_test_split` with `random_state=42` and stratification to preserve class proportions.
 
-##  Model Details
+Expected dataset location:
 
-- **Input:** Vectorized text (Bag-of-Words)  
-- **Hidden layer:** 128 neurons with ReLU activation  
-- **Output:** 2 classes (Positive / Negative)  
-- **Training:** 5 epochs, cross-entropy loss  
-- **Performance:** 88% train accuracy 
+`data/IMDB_Dataset.csv`
 
+The CSV file must contain the columns `review` and `sentiment`.
 
+## Model Architecture
 
-##  Project Structure
+The project uses a simple feedforward neural network.
+
+**Text processing:**
+
+1. Convert text to lowercase.
+2. Remove HTML tags.
+3. Remove non-alphabetic characters.
+4. Normalize whitespace.
+5. Transform text into numerical features using `CountVectorizer`.
+
+**Vectorization parameters:**
+- Maximum features: 10,000
+- N-gram range: (1, 2)
+- Stop words: English
+
+**Neural network:**
+
+| Layer | Configuration |
+|---|---|
+| Input | Vocabulary size |
+| Fully Connected | 128 neurons |
+| Activation | ReLU |
+| Output | 2 classes |
+
+**Training configuration:**
+- Loss function: CrossEntropyLoss
+- Optimizer: Adam
+- Learning rate: 0.001
+- Epochs: 5
+- Batch size: 32
+
+## Project Structure
 
 ```text
 sentiment-analyzer/
 │
-├── app.py            # Flask API
-├── predict.py        # Prediction helper
+├── data/
+│   └── IMDB_Dataset.csv
+│
+├── model/
+│   ├── train.py
+│   ├── vectorizer.pkl
+│   └── sentiment_model.pth
+│
+├── app.py
+├── predict.py
 ├── requirements.txt
-├── README.md
-├── .gitignore
-└── model/          # Contains train.py and model files
-└── data/           # contains dataset
+└── README.md
+```
 
-##  How to run
+The model artifacts (`vectorizer.pkl` and `sentiment_model.pth`) are generated after training.
 
-1 Create a virtual environment (optional but recommended)
+## Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/ritej8/sentiment-analyzer.git
+cd sentiment-analyzer
+```
+
+Create a virtual environment:
+
+```bash
 python -m venv venv
-# Windows
+```
+
+Activate it on Windows:
+
+```bash
 venv\Scripts\activate
-# macOS/Linux
-source venv/bin/activate
-2 Install dependencies
+```
+
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
-3 Train the model
-python train.py
+```
 
-Generates the model file locally (sentiment_model.pth)
+## Training
 
-4 Run the Flask API
+Run the training script from the project root:
+
+```bash
+python model/train.py
+```
+
+The script:
+1. Loads and preprocesses the dataset.
+2. Splits the data into training and test sets.
+3. Fits the vectorizer on the training data.
+4. Trains the neural network.
+5. Evaluates the model on the test set.
+6. Saves the vectorizer and trained model.
+
+## Prediction
+
+Run the interactive prediction script:
+
+```bash
+python predict.py
+```
+
+Enter a movie review when prompted.
+
+Example:
+
+```text
+Enter a movie review: This movie was fantastic and very enjoyable!
+
+Sentiment: Positive
+```
+
+## Flask REST API
+
+Start the API:
+
+```bash
 python app.py
+```
 
-The API will start at http://127.0.0.1:5000
+The API runs locally at:
 
-5 Make predictions
+`http://127.0.0.1:5000`
 
-Send a POST request to /predict with JSON:
+### Endpoint
 
+`POST /predict`
+
+**Request body:**
+
+```json
 {
-  "text": "I love this product!"
+  "text": "This movie was amazing!"
 }
+```
 
-Example response:
+**Example response:**
 
+```json
 {
-  "prediction": "Positive",
-  "confidence": 0.93
+  "sentiment": "Positive"
 }
- Tech Stack
-Python – Core programming
-PyTorch – Neural network modeling
-Flask – API deployment
-scikit-learn – Vectorization & preprocessing
-pandas / NumPy – Data handling
+```
 
+The API returns HTTP 400 for invalid requests, such as missing or empty text.
 
+## Model Evaluation
+
+The following results were obtained on the held-out test set of 10,000 reviews.
+
+| Metric | Score |
+|---|---:|
+| Training Accuracy | 99.84% |
+| Test Accuracy | 87.88% |
+| Negative Precision | 0.87 |
+| Negative Recall | 0.88 |
+| Negative F1-score | 0.88 |
+| Positive Precision | 0.88 |
+| Positive Recall | 0.87 |
+| Positive F1-score | 0.88 |
+| Macro F1-score | 0.88 |
+
+### Confusion Matrix
+
+```text
+                 Predicted
+                 Negative  Positive
+
+Actual Negative    4420      580
+Actual Positive     632     4368
+```
+
+The model achieves 87.88% accuracy on unseen test data.
+
+The difference between training accuracy (99.84%) and test accuracy (87.88%) indicates overfitting. This suggests that the model learns the training examples very well but does not generalize equally well to unseen reviews.
+
+## Limitations and Future Improvements
+
+- Reduce overfitting through regularization and hyperparameter tuning.
+- Compare Bag-of-Words with TF-IDF representations.
+- Experiment with dropout and different hidden-layer sizes.
+- Compare the neural network with traditional ML models such as Logistic Regression and SVM.
+- Explore more advanced text representations, such as word embeddings and Transformer-based models.
+- Improve API deployment and automated testing.
+
+## Author
+
+**Ritej Bouasker**
+
+GitHub: [@ritej8](https://github.com/ritej8)
