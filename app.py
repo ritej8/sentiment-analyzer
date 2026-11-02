@@ -1,14 +1,32 @@
-from flask import Flask, request, jsonify
-import torch
+import re
+from pathlib import Path
+
 import joblib
+import torch
 import torch.nn as nn
 
-app = Flask(__name__)
+
+# Project paths
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_DIR = BASE_DIR / "model"
+
+VECTORIZER_PATH = MODEL_DIR / "vectorizer.pkl"
+MODEL_PATH = MODEL_DIR / "sentiment_model.pth"
+
+
+# Text preprocessing (same as training)
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r"<.*?>", "", text)
+    text = re.sub(r"[^a-zA-Z\s]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
 
 # Model architecture
 class SentimentModel(nn.Module):
     def __init__(self, input_dim):
-        super(SentimentModel, self).__init__()
+        super().__init__()
         self.fc1 = nn.Linear(input_dim, 128)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(128, 2)
@@ -16,36 +34,45 @@ class SentimentModel(nn.Module):
     def forward(self, x):
         x = self.fc1(x)
         x = self.relu(x)
-        x = self.fc2(x)
-        return x
+        return self.fc2(x)
 
 
 # Load vectorizer
+vectorizer = joblib.load(VECTORIZER_PATH)
 
-vectorizer = joblib.load("model/vectorizer.pkl")
-# Load model
-model = SentimentModel(input_dim=10000)
-model.load_state_dict(torch.load("model/sentiment_model.pth"))
+# Initialize model with the actual vocabulary size
+input_dim = len(vectorizer.vocabulary_)
+model = SentimentModel(input_dim)
+
+# Load trained weights
+model.load_state_dict(
+    torch.load(MODEL_PATH, map_location=torch.device("cpu"))
+)
 model.eval()
 
 
-@app.route("/predict", methods=["POST"])
-def predict():
+def predict_sentiment(text):
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("Text must be a non-empty string.")
 
-    data = request.get_json()
-    text = data["text"]
+    cleaned_text = clean_text(text)
 
-    vec = vectorizer.transform([text])
-    X = torch.tensor(vec.toarray(), dtype=torch.float32)
+    vectorized_text = vectorizer.transform([cleaned_text])
+
+    input_tensor = torch.tensor(
+        vectorized_text.toarray(),
+        dtype=torch.float32
+    )
 
     with torch.no_grad():
-        outputs = model(X)
-        _, prediction = torch.max(outputs, 1)
+        outputs = model(input_tensor)
+        prediction = torch.argmax(outputs, dim=1).item()
 
-    sentiment = "Positive" if prediction.item() == 1 else "Negative"
-
-    return jsonify({"sentiment": sentiment})
+    return "Positive" if prediction == 1 else "Negative"
 
 
+# Run interactive prediction only when executed directly
 if __name__ == "__main__":
-    app.run(debug=True)
+    review = input("Enter a movie review: ")
+    result = predict_sentiment(review)
+    print("Sentiment:", result)
