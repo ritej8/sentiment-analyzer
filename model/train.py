@@ -127,5 +127,4 @@ with torch.no_grad():
 cm = confusion_matrix(all_labels, all_preds)
 print("Confusion Matrix:")
 print(cm)
-
-torch.save(model.state_dict(), "sentiment_model.pth")
+torch.save(model.state_dict(), "model/sentiment_model.pth")
