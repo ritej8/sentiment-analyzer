@@ -1,13 +1,32 @@
+import re
+from pathlib import Path
+
+import joblib
 import torch
 import torch.nn as nn
-import joblib
 
-# ---- Model architecture (same as training) ----
 
+# Project paths
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_DIR = BASE_DIR / "model"
+
+VECTORIZER_PATH = MODEL_DIR / "vectorizer.pkl"
+MODEL_PATH = MODEL_DIR / "sentiment_model.pth"
+
+
+# Text preprocessing (same as training)
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r"<.*?>", "", text)
+    text = re.sub(r"[^a-zA-Z\s]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+# Model architecture
 class SentimentModel(nn.Module):
     def __init__(self, input_dim):
-        super(SentimentModel, self).__init__()
-
+        super().__init__()
         self.fc1 = nn.Linear(input_dim, 128)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(128, 2)
@@ -15,47 +34,45 @@ class SentimentModel(nn.Module):
     def forward(self, x):
         x = self.fc1(x)
         x = self.relu(x)
-        x = self.fc2(x)
-        return x
+        return self.fc2(x)
 
 
-# ---- Load vectorizer ----
+# Load vectorizer
+vectorizer = joblib.load(VECTORIZER_PATH)
 
-vectorizer = joblib.load("model/vectorizer.pkl")
+# Initialize model with the actual vocabulary size
+input_dim = len(vectorizer.vocabulary_)
+model = SentimentModel(input_dim)
 
-
-# ---- Load trained model ----
-
-model = SentimentModel(input_dim=10000)
-model.load_state_dict(torch.load("model/sentiment_model.pth"))
+# Load trained weights
+model.load_state_dict(
+    torch.load(MODEL_PATH, map_location=torch.device("cpu"))
+)
 model.eval()
 
 
-# ---- Prediction function ----
-
 def predict_sentiment(text):
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("Text must be a non-empty string.")
 
-    # transform text → vector
-    vec = vectorizer.transform([text])
+    cleaned_text = clean_text(text)
 
-    # convert to tensor
-    X = torch.tensor(vec.toarray(), dtype=torch.float32)
+    vectorized_text = vectorizer.transform([cleaned_text])
 
-    # model prediction
+    input_tensor = torch.tensor(
+        vectorized_text.toarray(),
+        dtype=torch.float32
+    )
+
     with torch.no_grad():
-        outputs = model(X)
-        _, prediction = torch.max(outputs, 1)
+        outputs = model(input_tensor)
+        prediction = torch.argmax(outputs, dim=1).item()
 
-    if prediction.item() == 1:
-        return "Positive"
-    else:
-        return "Negative"
+    return "Positive" if prediction == 1 else "Negative"
 
 
-# ---- Test the model ----
-
-review = input("Enter a movie review: ")
-
-result = predict_sentiment(review)
-
-print("Sentiment:", result)
+# Run interactive prediction only when executed directly
+if __name__ == "__main__":
+    review = input("Enter a movie review: ")
+    result = predict_sentiment(review)
+    print("Sentiment:", result)
