@@ -21,8 +21,8 @@ class SentimentModel(nn.Module):
 
 
 # Load vectorizer
-vectorizer = joblib.load("vectorizer.pkl")
 
+vectorizer = joblib.load("model/vectorizer.pkl")
 # Load model
 model = SentimentModel(input_dim=10000)
 model.load_state_dict(torch.load("sentiment_model.pth"))
