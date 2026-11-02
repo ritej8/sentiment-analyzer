@@ -21,7 +21,7 @@ class SentimentModel(nn.Module):
 
 # ---- Load vectorizer ----
 
-vectorizer = joblib.load("vectorizer.pkl")
+vectorizer = joblib.load("model/vectorizer.pkl")
 
 
 # ---- Load trained model ----
