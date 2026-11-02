@@ -4,7 +4,10 @@ from pathlib import Path
 import joblib
 import torch
 import torch.nn as nn
+from flask import Flask, request, jsonify
 
+
+app = Flask(__name__)
 
 # Project paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -40,23 +43,55 @@ class SentimentModel(nn.Module):
 # Load vectorizer
 vectorizer = joblib.load(VECTORIZER_PATH)
 
-# Initialize model with the actual vocabulary size
+# Initialize model
 input_dim = len(vectorizer.vocabulary_)
 model = SentimentModel(input_dim)
 
-# Load trained weights
+# Load trained model
 model.load_state_dict(
     torch.load(MODEL_PATH, map_location=torch.device("cpu"))
 )
 model.eval()
 
 
-def predict_sentiment(text):
-    if not isinstance(text, str) or not text.strip():
-        raise ValueError("Text must be a non-empty string.")
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "message": "Sentiment Analysis API",
+        "endpoint": "/predict",
+        "method": "POST"
+    })
 
+
+@app.route("/predict", methods=["POST"])
+def predict():
+
+    # Check JSON format
+    if not request.is_json:
+        return jsonify({
+            "error": "Request must contain JSON data."
+        }), 400
+
+    data = request.get_json(silent=True)
+
+    # Check JSON structure
+    if not isinstance(data, dict) or "text" not in data:
+        return jsonify({
+            "error": "Missing 'text' field."
+        }), 400
+
+    text = data["text"]
+
+    # Validate input
+    if not isinstance(text, str) or not text.strip():
+        return jsonify({
+            "error": "'text' must be a non-empty string."
+        }), 400
+
+    # Preprocessing
     cleaned_text = clean_text(text)
 
+    # Vectorization
     vectorized_text = vectorizer.transform([cleaned_text])
 
     input_tensor = torch.tensor(
@@ -64,15 +99,17 @@ def predict_sentiment(text):
         dtype=torch.float32
     )
 
+    # Prediction
     with torch.no_grad():
         outputs = model(input_tensor)
         prediction = torch.argmax(outputs, dim=1).item()
 
-    return "Positive" if prediction == 1 else "Negative"
+    sentiment = "Positive" if prediction == 1 else "Negative"
+
+    return jsonify({
+        "sentiment": sentiment
+    })
 
 
-# Run interactive prediction only when executed directly
 if __name__ == "__main__":
-    review = input("Enter a movie review: ")
-    result = predict_sentiment(review)
-    print("Sentiment:", result)
+    app.run(host="127.0.0.1", port=5000, debug=False)
